@@ -1,0 +1,254 @@
+/* 🕸️ Spider Walk Web — uses SillyTavern theme variables so it follows any theme, light or dark. */
+
+.spiderwalk-settings .spiderwalk-muted,
+.spiderwalk-viewer .spiderwalk-muted {
+    opacity: 0.75;
+    font-size: 0.9em;
+}
+
+.spiderwalk-settings #spiderwalk_status {
+    display: block;
+    margin: 0.25em 0 0.5em;
+}
+
+.spiderwalk-h {
+    margin: 0.4em 0 0.3em;
+}
+
+.spiderwalk-buttons,
+.spiderwalk-tabs,
+.spiderwalk-toolbar,
+.spiderwalk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.spiderwalk-buttons .menu_button,
+.spiderwalk-tabs .menu_button,
+.spiderwalk-toolbar .menu_button {
+    margin: 0;
+    min-height: 36px;
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+/* two columns on wide panels, one on phones */
+.spiderwalk-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px 10px;
+    margin-bottom: 0.4em;
+}
+
+.spiderwalk-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.92em;
+    min-width: 0;
+}
+
+.spiderwalk-grid .text_pole {
+    width: 100%;
+    margin: 0;
+    min-height: 32px;
+    box-sizing: border-box;
+}
+
+/* ---------------- viewer popup ---------------- */
+
+.spiderwalk-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    min-width: 0;
+    width: 100%;
+}
+
+.spiderwalk-title {
+    margin: 0;
+}
+
+.spiderwalk-tabs .sw-tab.active {
+    border-color: var(--SmartThemeQuoteColor);
+    box-shadow: inset 0 -2px 0 var(--SmartThemeQuoteColor);
+}
+
+.spiderwalk-body {
+    min-width: 0;
+}
+
+.spiderwalk-svg {
+    display: block;
+    width: 100%;
+    max-width: 620px;
+    max-height: 55vh;
+    min-height: 220px;
+    margin: 0 auto;
+    touch-action: manipulation;
+}
+
+.spiderwalk-svg text {
+    font-size: 17px;
+    fill: var(--SmartThemeBodyColor);
+    paint-order: stroke;
+    stroke: var(--SmartThemeBlurTintColor);
+    stroke-width: 3px;
+}
+
+.spiderwalk-svg .sw-edge {
+    stroke: var(--SmartThemeBorderColor);
+    stroke-width: 1.5;
+    opacity: 0.7;
+}
+
+.spiderwalk-svg .sw-edge.sw-edge-on {
+    stroke: var(--SmartThemeQuoteColor);
+    stroke-width: 3;
+    opacity: 1;
+}
+
+.spiderwalk-svg .sw-node circle { fill: var(--SmartThemeEmColor); }
+.spiderwalk-svg .sw-seed circle { fill: var(--SmartThemeUnderlineColor); }
+.spiderwalk-svg .sw-path circle { fill: var(--SmartThemeQuoteColor); opacity: 0.6; }
+.spiderwalk-svg .sw-pick circle { fill: var(--SmartThemeQuoteColor); stroke: var(--SmartThemeBodyColor); stroke-width: 2; }
+
+.spiderwalk-paths {
+    margin-top: 8px;
+}
+
+.spiderwalk-paths ol {
+    margin: 4px 0 0;
+    padding-left: 1.4em;
+}
+
+.spiderwalk-paths li {
+    margin: 3px 0;
+    overflow-wrap: anywhere;
+}
+
+.spiderwalk-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.spiderwalk-legend .lg::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: var(--SmartThemeEmColor);
+}
+
+.spiderwalk-legend .lg.sw-seed::before { background: var(--SmartThemeUnderlineColor); }
+.spiderwalk-legend .lg.sw-path::before { background: var(--SmartThemeQuoteColor); opacity: 0.6; }
+.spiderwalk-legend .lg.sw-pick::before { background: var(--SmartThemeQuoteColor); }
+
+.spiderwalk-toolbar .sw-search {
+    flex: 3 1 180px;
+    margin: 0;
+    min-height: 36px;
+}
+
+.sw-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.spiderwalk-card {
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 70%, transparent);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.spiderwalk-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
+}
+
+.spiderwalk-badge {
+    font-size: 0.78em;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    white-space: nowrap;
+}
+
+.spiderwalk-badge.sw-src-card,
+.spiderwalk-badge.sw-src-self { border-color: var(--SmartThemeUnderlineColor); }
+.spiderwalk-badge.sw-src-memory { border-color: var(--SmartThemeQuoteColor); }
+.spiderwalk-badge.sw-src-manual { background: color-mix(in srgb, var(--SmartThemeQuoteColor) 25%, transparent); }
+
+.spiderwalk-note {
+    margin-top: 3px;
+}
+
+.spiderwalk-actions {
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.spiderwalk-actions .menu_button {
+    margin: 0;
+    min-width: 40px;
+    min-height: 36px;
+    justify-content: center;
+}
+
+.spiderwalk-actions .sw-dim { opacity: 0.4; }
+
+.spiderwalk-pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.9em;
+    max-height: 60vh;
+    overflow-y: auto;
+    margin: 0;
+}
+
+.spiderwalk-empty {
+    padding: 1.5em 0.5em;
+    text-align: center;
+    opacity: 0.8;
+}
+
+/* phones: bigger touch targets, tighter padding */
+@media screen and (max-width: 1000px) {
+    .spiderwalk-buttons .menu_button,
+    .spiderwalk-tabs .menu_button,
+    .spiderwalk-toolbar .menu_button,
+    .spiderwalk-actions .menu_button {
+        min-height: 42px;
+    }
+
+    .spiderwalk-tabs .menu_button {
+        flex: 1 1 40%;
+    }
+
+    .spiderwalk-card {
+        padding: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spiderwalk-viewer * {
+        transition: none !important;
+    }
+}

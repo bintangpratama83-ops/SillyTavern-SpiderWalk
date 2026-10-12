@@ -1,0 +1,102 @@
+<div id="spiderwalk_settings" class="spiderwalk-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>🕸️ Spider Walk Web</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <label class="checkbox_label" for="spiderwalk_enabled">
+                <input id="spiderwalk_enabled" type="checkbox">
+                <span>Enabled</span>
+            </label>
+            <small id="spiderwalk_status" class="spiderwalk-muted">No chat open.</small>
+
+            <div class="spiderwalk-buttons">
+                <div id="spiderwalk_open" class="menu_button menu_button_icon" title="See the web, the last walk and what was injected">
+                    <i class="fa-solid fa-diagram-project"></i><span>Open web</span>
+                </div>
+                <div id="spiderwalk_preview" class="menu_button menu_button_icon" title="Run the spider on the current chat now">
+                    <i class="fa-solid fa-route"></i><span>Preview walk</span>
+                </div>
+                <div id="spiderwalk_build" class="menu_button menu_button_icon" title="Read the card and recent messages with the helper model and grow the web">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i><span>Build now</span>
+                </div>
+                <div id="spiderwalk_clear" class="menu_button menu_button_icon" title="Delete this chat's web">
+                    <i class="fa-solid fa-broom"></i><span>Clear</span>
+                </div>
+            </div>
+
+            <hr class="sysHR">
+            <h4 class="spiderwalk-h">The walk</h4>
+            <div class="spiderwalk-grid">
+                <label for="spiderwalk_hops" title="How many strands the spider may follow from what is named in the newest messages">Hops
+                    <input id="spiderwalk_hops" class="text_pole" type="number" min="1" max="5" step="1"></label>
+                <label for="spiderwalk_decay" title="How much pull is kept at each hop (0.3 = stays close, 0.9 = wanders far)">Pull kept per hop
+                    <input id="spiderwalk_decay" class="text_pole" type="number" min="0.2" max="0.95" step="0.05"></label>
+                <label for="spiderwalk_topk" title="How many threads it brings back each turn">Threads brought back
+                    <input id="spiderwalk_topk" class="text_pole" type="number" min="1" max="8" step="1"></label>
+                <label for="spiderwalk_window" title="How many of the newest messages the spider lands on">Messages to land on
+                    <input id="spiderwalk_window" class="text_pole" type="number" min="1" max="6" step="1"></label>
+                <label for="spiderwalk_seednotes" title="Short reminders about things already in view (their latest note)">In-view reminders
+                    <input id="spiderwalk_seednotes" class="text_pole" type="number" min="0" max="5" step="1"></label>
+                <label for="spiderwalk_dormant" title="A knot not mentioned for this many messages gets a small boost, so forgotten threads come back">Bring back after (messages)
+                    <input id="spiderwalk_dormant" class="text_pole" type="number" min="5" max="200" step="1"></label>
+            </div>
+            <label class="checkbox_label" for="spiderwalk_uselore"><input id="spiderwalk_uselore" type="checkbox"><span>Walk through active lorebooks</span></label>
+            <label class="checkbox_label" for="spiderwalk_usememory"><input id="spiderwalk_usememory" type="checkbox"><span>Walk through story memory</span></label>
+            <label class="checkbox_label" for="spiderwalk_hebbian" title="Knots named in the same message get a weak strand that grows each time"><input id="spiderwalk_hebbian" type="checkbox"><span>Link things that come up together</span></label>
+            <label class="checkbox_label" for="spiderwalk_stripledger" title="Ignore Eclipse Forge ledgers, details blocks and HTML when reading messages"><input id="spiderwalk_stripledger" type="checkbox"><span>Ignore ledgers and HTML blocks</span></label>
+
+            <hr class="sysHR">
+            <h4 class="spiderwalk-h">What the AI sees</h4>
+            <div class="spiderwalk-grid">
+                <label for="spiderwalk_mode">Inject
+                    <select id="spiderwalk_mode" class="text_pole">
+                        <option value="auto">Automatically</option>
+                        <option value="macro">Only through &#123;&#123;spiderWeb&#125;&#125;</option>
+                    </select></label>
+                <label for="spiderwalk_position">Position
+                    <select id="spiderwalk_position" class="text_pole">
+                        <option value="1">In chat, at depth</option>
+                        <option value="0">After story string</option>
+                        <option value="2">Before story string</option>
+                    </select></label>
+                <label id="spiderwalk_depth_row" for="spiderwalk_depth">Depth
+                    <input id="spiderwalk_depth" class="text_pole" type="number" min="0" max="20" step="1"></label>
+                <label for="spiderwalk_role">Role
+                    <select id="spiderwalk_role" class="text_pole">
+                        <option value="0">System</option>
+                        <option value="1">User</option>
+                        <option value="2">Assistant</option>
+                    </select></label>
+                <label for="spiderwalk_maxchars">Max characters
+                    <input id="spiderwalk_maxchars" class="text_pole" type="number" min="300" max="6000" step="100"></label>
+                <label for="spiderwalk_lorechars">Lore text per entry
+                    <input id="spiderwalk_lorechars" class="text_pole" type="number" min="0" max="2000" step="50"></label>
+            </div>
+
+            <hr class="sysHR">
+            <h4 class="spiderwalk-h">Memory builder (helper model)</h4>
+            <small class="spiderwalk-muted">Reads the card and new messages in the background and adds knots and strands. A small, fast model is plenty.</small>
+            <div class="spiderwalk-grid">
+                <label for="spiderwalk_source">Helper model
+                    <select id="spiderwalk_source" class="text_pole">
+                        <option value="main">Current connection</option>
+                        <option value="profile">Connection profile…</option>
+                        <option value="off">Off (lorebook + co-mentions only)</option>
+                    </select></label>
+                <label id="spiderwalk_profile_row" for="spiderwalk_profile">Profile
+                    <select id="spiderwalk_profile" class="text_pole"></select></label>
+                <label for="spiderwalk_maxtokens">Helper max tokens
+                    <input id="spiderwalk_maxtokens" class="text_pole" type="number" min="200" max="8000" step="100"></label>
+                <label for="spiderwalk_buildevery" title="Update the web after this many AI replies">Update every (replies)
+                    <input id="spiderwalk_buildevery" class="text_pole" type="number" min="1" max="50" step="1"></label>
+                <label for="spiderwalk_buildwindow" title="How many recent messages the helper reads per update">Messages per update
+                    <input id="spiderwalk_buildwindow" class="text_pole" type="number" min="2" max="60" step="1"></label>
+            </div>
+            <label class="checkbox_label" for="spiderwalk_autobuild"><input id="spiderwalk_autobuild" type="checkbox"><span>Update automatically</span></label>
+            <label class="checkbox_label" for="spiderwalk_toasts"><input id="spiderwalk_toasts" type="checkbox"><span>Show notifications</span></label>
+            <small class="spiderwalk-muted">Commands: /spider-web · /spider-walk · /spider-build · /spider-clear · macro &#123;&#123;spiderWeb&#125;&#125;</small>
+        </div>
+    </div>
+</div>

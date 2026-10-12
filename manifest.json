@@ -1,0 +1,13 @@
+{
+    "display_name": "Spider Walk Web",
+    "loading_order": 20,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Bintang",
+    "version": "0.1.0",
+    "homePage": "https://github.com/YOUR_GITHUB_NAME/SillyTavern-SpiderWalk",
+    "auto_update": false,
+    "generate_interceptor": "spiderWalkInterceptor"
+}
