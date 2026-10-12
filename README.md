@@ -27,7 +27,7 @@ Requires a recent SillyTavern (1.13+) with the built-in **Connection Manager** e
 | Part | What it does | API cost |
 |---|---|---|
 | **The walk** | Runs before every generation, inside SillyTavern's prompt builder. Pure JavaScript. | none |
-| **Lorebook layer** | Every enabled entry in the active lorebooks (character, extra character books, chat, global, persona) becomes a knot. Entries that mention each other's keys are linked. Constant entries are skipped because they're always in the prompt anyway. | none |
+| **Lorebook layer** | Every enabled entry in your **story lorebooks** (character, extra character books, chat, persona) becomes a knot. Entries that mention each other's keys are linked. Constant entries are skipped because they're always in the prompt anyway. Global lorebooks are off by default (see below). | none |
 | **"Seen together" links** | Knots mentioned in the same message get a weak strand that grows each time ("fire together, wire together"). These links stay weaker than real ones. | none |
 | **Memory builder** | Every few AI replies, a helper model reads the new messages (and the card, the first time) and adds knots and strands. | one small request |
 
@@ -43,6 +43,8 @@ Under **Memory builder → Helper model**:
 
 Good helper models are small instruction models that follow JSON well. The helper only maps the story; it never writes story text.
 
+If a build fails, it isn't silent: you get one notification per chat, the status line shows **⚠ last build failed**, and **Open web** shows the reason. The most common cause is a thinking model spending all of **Helper max tokens** (default 4000) on reasoning before it writes the JSON. Raise the limit, or use a non-thinking model in a connection profile.
+
 ## Settings
 
 **The walk**
@@ -53,6 +55,13 @@ Good helper models are small instruction models that follow JSON well. The helpe
 - **In-view reminders:** short notes about things already in the scene, so stale facts get refreshed (default 2).
 - **Bring back after:** a knot not mentioned for this many messages gets a boost, so forgotten threads return (default 20).
 - **Ignore ledgers and HTML blocks:** skips Eclipse Forge state ledgers, `<details>` blocks and HTML when reading messages.
+
+**Which lorebooks**
+- **Story lorebooks only** (default): the character's books, the chat's book and the persona book.
+- **All active lorebooks:** also walks global books.
+- Under that is a checklist of the chat's active books; untick any book the spider should never walk.
+
+Why global books are off by default: global books are often rules, styles or sound libraries (formatting rules, onomatopoeia tables and so on), not story. Their entries point at each other constantly, so the spider wanders through rules and brings back "Footsteps" or "Restraints" instead of the story's threads. The AI still gets those books from SillyTavern as usual; the spider just doesn't walk through them.
 
 **What the AI sees**
 - **Inject automatically:** in chat at depth 1 as a system message (default), or after or before the story string.
@@ -110,6 +119,17 @@ Eclipse Forge R6.17 has a 🕷️ Spider Walk reasoning toggle: the model's own 
 - `src/web.js`: the engine (knots, strands, crawl, formatting, helper JSON parsing). It has no SillyTavern imports, so it can be tested in Node: `node --test test/`
 - `src/prompts.js`: the helper-model prompt.
 - `index.js`: SillyTavern glue (settings, interceptor, viewer, commands).
+
+## Changelog
+
+**0.2.0**
+- The walk covers story lorebooks only by default. Global books, often rule or sound libraries, are opt-in, and there's a per-book checklist.
+- The same entry loaded twice (two versions of one lorebook) counts once.
+- `{{user}}` and `{{char}}` in lorebook titles and text are resolved.
+- Memory builder: the default helper limit is now 4000 tokens (old 1200 settings are upgraded). Failures are shown, not silent. JSON that a provider returns in the reasoning field is still used. The builder no longer waits on a stale "busy" flag.
+- The viewer shows the last build result and which lorebooks are walked.
+
+**0.1.0:** first release.
 
 ## License
 

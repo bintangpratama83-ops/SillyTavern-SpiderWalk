@@ -223,19 +223,24 @@ export function prune(web, maxKnots = 150, maxStrands = 400) {
  * books: [{ name, entries: { uid: { uid, key:[], keysecondary:[], comment, content, disable, constant } } }]
  * Lore-to-lore strands: an entry whose text names another entry's key (like SillyTavern recursion).
  */
-export function buildLoreKnots(books, { maxEntries = 400 } = {}) {
+export function buildLoreKnots(books, { maxEntries = 400, subst = (x) => x } = {}) {
     const knots = [];
+    const seen = new Set(); // the same entry in two books (e.g. two versions of one lorebook) counts once
     for (const book of books || []) {
         const entries = Object.values(book?.entries || {});
         for (const e of entries) {
             if (!e || e.disable) continue;
             const keys = (Array.isArray(e.key) ? e.key : String(e.key || '').split(','))
                 .map(x => String(x).trim()).filter(x => x && !/^\/.*\/[a-z]*$/i.test(x)); // skip regex keys
-            const name = String(e.comment || keys[0] || '').trim();
+            const name = subst(String(e.comment || keys[0] || '').trim());
             if (!name) continue;
+            const content = subst(String(e.content || ''));
+            const sig = norm(name) + '|' + norm(content).slice(0, 120);
+            if (seen.has(sig)) continue;
+            seen.add(sig);
             knots.push({
-                id: `lore:${book.name}:${e.uid}`, name: name.slice(0, 60), kind: 'lore', aliases: keys.slice(0, 8),
-                note: '', content: String(e.content || ''), constant: !!e.constant, source: 'lore', book: book.name, uid: e.uid,
+                id: `lore:${book.name}:${e.uid}`, name: name.slice(0, 60), kind: 'lore', aliases: keys.slice(0, 8).map(k => subst(k)),
+                note: '', content, constant: !!e.constant, source: 'lore', book: book.name, uid: e.uid,
             });
             if (knots.length >= maxEntries) break;
         }

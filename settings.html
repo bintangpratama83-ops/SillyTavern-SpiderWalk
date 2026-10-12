@@ -42,7 +42,15 @@
                 <label for="spiderwalk_dormant" title="A knot not mentioned for this many messages gets a small boost, so forgotten threads come back">Bring back after (messages)
                     <input id="spiderwalk_dormant" class="text_pole" type="number" min="5" max="200" step="1"></label>
             </div>
-            <label class="checkbox_label" for="spiderwalk_uselore"><input id="spiderwalk_uselore" type="checkbox"><span>Walk through active lorebooks</span></label>
+            <label class="checkbox_label" for="spiderwalk_uselore"><input id="spiderwalk_uselore" type="checkbox"><span>Walk through lorebooks</span></label>
+            <div class="spiderwalk-lore">
+                <label for="spiderwalk_lorescope" title="Global lorebooks are often rules, styles or sound libraries, not story. Their entries point at each other, so the spider wanders through rules instead of the story.">Which lorebooks
+                    <select id="spiderwalk_lorescope" class="text_pole">
+                        <option value="story">Story lorebooks only (character, chat, persona)</option>
+                        <option value="all">All active lorebooks (also global)</option>
+                    </select></label>
+                <div id="spiderwalk_books" class="spiderwalk-books"></div>
+            </div>
             <label class="checkbox_label" for="spiderwalk_usememory"><input id="spiderwalk_usememory" type="checkbox"><span>Walk through story memory</span></label>
             <label class="checkbox_label" for="spiderwalk_hebbian" title="Knots named in the same message get a weak strand that grows each time"><input id="spiderwalk_hebbian" type="checkbox"><span>Link things that come up together</span></label>
             <label class="checkbox_label" for="spiderwalk_stripledger" title="Ignore Eclipse Forge ledgers, details blocks and HTML when reading messages"><input id="spiderwalk_stripledger" type="checkbox"><span>Ignore ledgers and HTML blocks</span></label>

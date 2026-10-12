@@ -146,3 +146,12 @@ test('walkSnapshot is small and serialisable', () => {
     assert.ok(JSON.stringify(snap).length < 4000);
     assert.ok(snap.reached.some(n => n.seed));
 });
+
+test('lore: macros resolved, duplicate entries across two books counted once', () => {
+    const entry = { uid: 1, key: ['mill'], comment: 'The day {{user}} found the mill', content: 'Where {{user}} hid.' };
+    const lore = buildLoreKnots([{ name: 'Book v1', entries: { 1: entry } }, { name: 'Book v2', entries: { 1: { ...entry } } }],
+        { subst: s => s.replaceAll('{{user}}', 'Arin') });
+    assert.equal(lore.knots.length, 1);
+    assert.equal(lore.knots[0].name, 'The day Arin found the mill');
+    assert.ok(!lore.knots[0].content.includes('{{user}}'));
+});

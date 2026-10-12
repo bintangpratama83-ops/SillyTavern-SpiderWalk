@@ -31,6 +31,8 @@ const DEFAULTS = Object.freeze({
     windowMessages: 3,
     dormantAfter: 20,
     useLore: true,
+    loreScope: 'story',          // 'story' = character + chat + persona books; 'all' = also global books
+    loreSkip: [],                // book names never walked
     useMemory: true,
     hebbian: true,
     stripLedger: true,
@@ -44,7 +46,7 @@ const DEFAULTS = Object.freeze({
     // helper model
     helperSource: 'main',        // 'off' | 'main' | 'profile'
     helperProfileId: '',
-    helperMaxTokens: 1200,
+    helperMaxTokens: 4000,       // thinking models spend tokens on reasoning before the JSON
     autoBuild: true,
     buildEvery: 4,               // AI replies between background updates
     buildWindow: 12,             // messages sent to the helper per update
@@ -67,10 +69,20 @@ const debug = { helper: null };     // tests can set debug.helper = async (syste
 
 const ctx = () => SillyTavern.getContext();
 
+const SETTINGS_VERSION = 2;
+
 function settings() {
     const all = ctx().extensionSettings;
-    all[MODULE] = Object.assign({}, DEFAULTS, all[MODULE] || {});
-    return all[MODULE];
+    const saved = all[MODULE] || {};
+    const merged = Object.assign({}, DEFAULTS, saved);
+    if ((saved._v || 1) < 2) {
+        // 0.1.0 -> 0.2.0: the old 1200-token helper default was too small for thinking models
+        if (Number(saved.helperMaxTokens) === 1200) merged.helperMaxTokens = DEFAULTS.helperMaxTokens;
+        merged._v = SETTINGS_VERSION;
+    }
+    if (!Array.isArray(merged.loreSkip)) merged.loreSkip = [];
+    all[MODULE] = merged;
+    return merged;
 }
 
 function save() { ctx().saveSettingsDebounced(); }
@@ -144,29 +156,40 @@ function cardKey() {
     return activeCharacters().map(ch => ch.avatar).join(',');
 }
 
-/** Names of every lorebook that is active for this chat (character, extra character books, chat, global, persona). */
-function activeBookNames() {
+/**
+ * Every lorebook active for this chat, with where it comes from.
+ * kind: 'character' (primary or extra character book), 'chat', 'persona', 'global'
+ */
+function activeBooks() {
     const c = ctx();
-    const names = new Set();
+    const out = new Map();
+    const add = (name, kind) => { if (name && !out.has(name)) out.set(name, kind); };
     for (const ch of activeCharacters()) {
-        const primary = ch.data?.extensions?.world;
-        if (primary) names.add(primary);
+        add(ch.data?.extensions?.world, 'character');
         const fileName = String(ch.avatar || '').replace(/\.[^/.]+$/, '');
         const extra = worldInfoModule?.world_info?.charLore?.find(e => e.name === fileName);
-        for (const b of extra?.extraBooks || []) if (b) names.add(b);
+        for (const b of extra?.extraBooks || []) add(b, 'character');
     }
-    const chatBook = c.chatMetadata?.world_info;
-    if (chatBook) names.add(chatBook);
-    for (const b of worldInfoModule?.selected_world_info || []) if (b) names.add(b);
-    const personaBook = c.powerUserSettings?.persona_description_lorebook;
-    if (personaBook) names.add(personaBook);
-    return [...names];
+    add(c.chatMetadata?.world_info, 'chat');
+    add(c.powerUserSettings?.persona_description_lorebook, 'persona');
+    for (const b of worldInfoModule?.selected_world_info || []) add(b, 'global');
+    return [...out.entries()].map(([name, kind]) => ({ name, kind }));
 }
 
-async function loadBooks() {
+/**
+ * Books the spider walks. Global books are usually rules, styles or sound libraries rather than story,
+ * and their entries reference each other constantly, so by default only story books are walked.
+ */
+function walkBooks() {
+    const s = settings();
+    const skip = new Set(s.loreSkip || []);
+    return activeBooks().filter(b => !skip.has(b.name) && (s.loreScope === 'all' || b.kind !== 'global'));
+}
+
+async function loadBooks(list = walkBooks()) {
     const c = ctx();
     const books = [];
-    for (const name of activeBookNames()) {
+    for (const { name } of list) {
         try {
             let entry = loreCache.get(name);
             if (!entry) {
@@ -182,9 +205,14 @@ async function loadBooks() {
     return books;
 }
 
+function subst(text) {
+    const c = ctx();
+    try { return c.substituteParams ? c.substituteParams(String(text ?? '')) : String(text ?? ''); } catch { return String(text ?? ''); }
+}
+
 async function loreLayer(web) {
     if (!settings().useLore) return { knots: [], strands: [] };
-    const lore = buildLoreKnots(await loadBooks());
+    const lore = buildLoreKnots(await loadBooks(), { subst });
     lore.strands.push(...linkLoreToWeb(lore.knots, Object.values(web.knots)));
     return lore;
 }
@@ -249,7 +277,7 @@ globalThis.spiderWalkInterceptor = async function (chatArr, _contextSize, _abort
 
 /* ---------------------------------------------------------------- memory builder (helper model) */
 
-async function waitUntilIdle(timeoutMs = 60000) {
+async function waitUntilIdle(timeoutMs = 30000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
         const busy = generating || (scriptModule && scriptModule.is_send_press);
@@ -262,7 +290,7 @@ async function waitUntilIdle(timeoutMs = 60000) {
 async function callHelper(system, user) {
     const s = settings();
     const c = ctx();
-    if (debug.helper) return debug.helper(system, user);
+    if (debug.helper) { const r = await debug.helper(system, user); return typeof r === 'string' ? { text: r, reasoning: '' } : r; }
     if (s.helperSource === 'profile') {
         if (!s.helperProfileId) throw new Error('Pick a connection profile for the helper model.');
         const res = await c.ConnectionManagerRequestService.sendRequest(
@@ -271,11 +299,12 @@ async function callHelper(system, user) {
             Number(s.helperMaxTokens),
             { stream: false, extractData: true, includePreset: false, includeInstruct: true },
         );
-        return typeof res === 'string' ? res : (res?.content ?? '');
+        return typeof res === 'string' ? { text: res, reasoning: '' } : { text: res?.content ?? '', reasoning: res?.reasoning ?? '' };
     }
     if (s.helperSource === 'main') {
         await waitUntilIdle();
-        return c.generateRaw({ prompt: user, systemPrompt: system, responseLength: Number(s.helperMaxTokens) });
+        const text = await c.generateRaw({ prompt: user, systemPrompt: system, responseLength: Number(s.helperMaxTokens) });
+        return { text, reasoning: '' };
     }
     throw new Error('Helper model is off.');
 }
@@ -311,23 +340,28 @@ async function buildWeb({ force = false, full = false } = {}) {
         const last = c.chat.length - 1;
         const needCard = full || web.seededFor !== cardKey();
         const from = full ? last - s.buildWindow + 1 : Math.max(web.builtUpTo + 1, last - s.buildWindow + 1);
-        const lore = s.useLore ? buildLoreKnots(await loadBooks()) : { knots: [] };
+        const lore = s.useLore ? buildLoreKnots(await loadBooks(), { subst }) : { knots: [] };
         const user = helperUserPrompt({
             card: needCard ? cardText(s.cardCharLimit) : '',
             loreTitles: lore.knots.slice(0, 80).map(k => k.name),
             existing: Object.values(web.knots).filter(k => k.source !== 'self').slice(-80).map(k => ({ name: k.name, kind: k.kind })),
             chat: chatSlice(from, last),
         });
-        const raw = await callHelper(HELPER_SYSTEM, user);
-        const obj = parseHelperJSON(raw);
+        const reply = await callHelper(HELPER_SYSTEM, user);
+        // some providers put everything in the reasoning field when the model runs out of room
+        const obj = parseHelperJSON(reply.text) || parseHelperJSON(reply.reasoning);
         if (!obj) {
-            console.warn(LOG, 'helper reply had no usable JSON:', raw);
-            if (force) toast('warning', 'The helper model did not return usable JSON. Try a different model for the helper.');
+            console.warn(LOG, 'helper reply had no usable JSON:', reply);
+            const why = !String(reply.text || '').trim()
+                ? 'The helper model returned nothing. A thinking model may have used all its tokens on reasoning: raise "Helper max tokens" or pick a non-thinking model in a connection profile.'
+                : 'The helper model did not return usable JSON. Pick a model that follows instructions well, or raise "Helper max tokens".';
+            buildFailed(web, why, force);
             return null;
         }
         // card knots are labelled 'card' on the first (card-reading) pass
         const res = applyHelperResult(web, obj, last, needCard && web.builtUpTo < 0 ? 'card' : 'memory');
         web.builtUpTo = last;
+        web.lastBuild = { at: Date.now(), ok: true, msg: `+${res.added} knots, ${res.updated} updated, ${res.strands} strands` };
         if (needCard) web.seededFor = cardKey();
         prune(web, s.maxKnots, s.maxStrands);
         saveWeb();
@@ -335,11 +369,23 @@ async function buildWeb({ force = false, full = false } = {}) {
         return res;
     } catch (e) {
         console.error(LOG, 'build failed', e);
-        toast('error', `Build failed: ${e.message || e}`);
+        buildFailed(getWeb(), `Build failed: ${e.message || e}`, true);
         return null;
     } finally {
         building = false;
         updateStatus();
+    }
+}
+
+const failToastShown = new Set();
+
+/** Record a failed build in the web (shown in the status line) and tell the user once per chat. */
+function buildFailed(web, msg, force) {
+    if (web) { web.lastBuild = { at: Date.now(), ok: false, msg }; saveWeb(); }
+    const chatId = ctx().getCurrentChatId?.() || '';
+    if (force || !failToastShown.has(chatId)) {
+        failToastShown.add(chatId);
+        toastr.warning(msg, 'Spider Walk', { timeOut: 12000 });
     }
 }
 
@@ -377,6 +423,33 @@ function onChatChanged() {
     lastInjection = '';
     clearPrompt();
     updateStatus();
+    renderBookList();
+}
+
+const KIND_LABEL = { character: 'character', chat: 'chat', persona: 'persona', global: 'global' };
+
+/** Checklist of this chat's active lorebooks: which ones the spider walks. */
+function renderBookList() {
+    const box = document.getElementById('spiderwalk_books');
+    if (!box) return;
+    const s = settings();
+    const books = hasChat() ? activeBooks() : [];
+    if (!books.length) { box.innerHTML = '<small class="spiderwalk-muted">No active lorebooks in this chat.</small>'; return; }
+    const skip = new Set(s.loreSkip || []);
+    box.innerHTML = books.map((b, i) => {
+        const offByScope = s.loreScope !== 'all' && b.kind === 'global';
+        const on = !offByScope && !skip.has(b.name);
+        return `<label class="checkbox_label spiderwalk-book" for="spiderwalk_book_${i}" title="${offByScope ? 'Global books are skipped while “Story lorebooks only” is selected' : ''}">
+            <input id="spiderwalk_book_${i}" type="checkbox" data-book="${esc(b.name)}" ${on ? 'checked' : ''} ${offByScope ? 'disabled' : ''}>
+            <span>${esc(b.name)} <span class="spiderwalk-badge">${KIND_LABEL[b.kind]}</span></span></label>`;
+    }).join('');
+    box.querySelectorAll('input[data-book]').forEach(el => el.addEventListener('change', () => {
+        const st = settings();
+        const set = new Set(st.loreSkip || []);
+        if (el.checked) set.delete(el.dataset.book); else set.add(el.dataset.book);
+        st.loreSkip = [...set];
+        save();
+    }));
 }
 
 /* ---------------------------------------------------------------- UI: settings drawer */
@@ -387,7 +460,8 @@ function statusText() {
     const knots = Object.values(w.knots).filter(k => k.source !== 'self').length;
     const strands = Object.keys(w.strands).length;
     const built = w.builtUpTo >= 0 ? `memory up to message #${w.builtUpTo}` : 'memory not built yet';
-    return `${knots} knots · ${strands} strands · ${built}`;
+    const fail = w.lastBuild && !w.lastBuild.ok ? ' · ⚠ last build failed (see Open web)' : '';
+    return `${knots} knots · ${strands} strands · ${built}${fail}`;
 }
 
 function updateStatus(extra) {
@@ -424,6 +498,7 @@ const BINDINGS = [
     ['spiderwalk_window', 'windowMessages', 'int'],
     ['spiderwalk_dormant', 'dormantAfter', 'int'],
     ['spiderwalk_uselore', 'useLore', 'bool'],
+    ['spiderwalk_lorescope', 'loreScope', 'str'],
     ['spiderwalk_usememory', 'useMemory', 'bool'],
     ['spiderwalk_hebbian', 'hebbian', 'bool'],
     ['spiderwalk_stripledger', 'stripLedger', 'bool'],
@@ -456,6 +531,7 @@ function bindSettings() {
             else if (type === 'float') { const v = parseFloat(el.value); if (!Number.isNaN(v)) st[key] = v; }
             else st[key] = el.value;
             if (key === 'helperSource') fillProfiles();
+            if (key === 'loreScope') { loreCache.clear(); renderBookList(); }
             if (key === 'enabled' && !st.enabled) clearPrompt();
             if (key === 'injectMode' || key === 'position') document.getElementById('spiderwalk_depth_row')?.classList.toggle('displayNone', Number(st.position) !== 1);
             save();
@@ -463,6 +539,8 @@ function bindSettings() {
     }
     document.getElementById('spiderwalk_depth_row')?.classList.toggle('displayNone', Number(s.position) !== 1);
     fillProfiles();
+    renderBookList();
+    $('#spiderwalk_settings .inline-drawer-toggle').on('click', () => setTimeout(renderBookList, 0));
     $('#spiderwalk_open').on('click', () => openViewer());
     $('#spiderwalk_build').on('click', () => buildWeb({ force: true, full: true }));
     $('#spiderwalk_preview').on('click', () => previewWalk());
@@ -567,6 +645,8 @@ async function openViewer(tab = 'walk') {
         root.innerHTML = `
             <h3 class="spiderwalk-title">🕸️ Spider Walk Web</h3>
             <div class="spiderwalk-muted">${esc(statusText())}</div>
+            ${web.lastBuild ? `<div class="spiderwalk-build ${web.lastBuild.ok ? 'ok' : 'bad'}">${web.lastBuild.ok ? 'Last build' : '⚠ Last build failed'}: ${esc(web.lastBuild.msg)}</div>` : ''}
+            <div class="spiderwalk-muted">Walking: ${esc(walkBooks().map(b => b.name).join(', ') || 'no lorebooks')}${settings().useMemory ? ' + story memory' : ''}</div>
             <div class="spiderwalk-tabs" role="tablist">
                 <div class="menu_button sw-tab${active === 'walk' ? ' active' : ''}" data-tab="walk">Last walk</div>
                 <div class="menu_button sw-tab${active === 'knots' ? ' active' : ''}" data-tab="knots">Knots (${knots.length})</div>
@@ -713,14 +793,14 @@ async function init() {
     loadCoreModules();
 
     const ev = c.eventTypes || c.event_types;
-    c.eventSource.on(ev.CHAT_CHANGED, onChatChanged);
-    c.eventSource.on(ev.MESSAGE_RECEIVED, onReply);
+    c.eventSource.on(ev.CHAT_CHANGED, () => { generating = false; onChatChanged(); });
+    c.eventSource.on(ev.MESSAGE_RECEIVED, (id, type) => { if (type !== 'quiet') generating = false; onReply(id, type); });
     c.eventSource.on(ev.MESSAGE_SENT, onMessage);
     c.eventSource.on(ev.GENERATION_STARTED, (_type, _opts, dryRun) => { if (!dryRun) generating = true; });
     c.eventSource.on(ev.GENERATION_ENDED, () => { generating = false; });
     c.eventSource.on(ev.GENERATION_STOPPED, () => { generating = false; });
     c.eventSource.on(ev.WORLDINFO_UPDATED, (name) => { if (name) loreCache.delete(name); else loreCache.clear(); });
-    c.eventSource.on(ev.WORLDINFO_SETTINGS_UPDATED, () => loreCache.clear());
+    c.eventSource.on(ev.WORLDINFO_SETTINGS_UPDATED, () => { loreCache.clear(); renderBookList(); });
     if (ev.CONNECTION_PROFILE_LOADED) c.eventSource.on(ev.CONNECTION_PROFILE_LOADED, fillProfiles);
     updateStatus();
     console.log(LOG, 'ready', FOLDER);
